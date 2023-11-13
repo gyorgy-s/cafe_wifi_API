@@ -123,39 +123,41 @@ def search_loc():
 
 # HTTP POST - Create Record
 def validate_new_entry(request: flask.Request) -> bool:
+    necessary_args = [
+        "name",
+        "map_url",
+        "img_url",
+        "location",
+        "seats",
+        "has_toilet",
+        "has_wifi",
+        "has_sockets",
+        "can_take_calls"
+    ]
     result = True
-    try:
-        request.args.get("name")
-        request.args.get("map_url")
-        request.args.get("img_url")
-        request.args.get("location")
-        request.args.get("seats")
-        request.args.get("has_toilet")
-        request.args.get("has_wifi")
-        request.args.get("has_sockets")
-        request.args.get("can_take_calls")
-    except KeyError as err:
-        result = False
-        raise KeyError("The value cannot be NULL.") from err
-    else:
-        for arg in ("name", "map_url", "img_url", "location"):
-            if len(request.args.get(arg)) < 3:
-                result = False
-                raise ValueError(f"The value for '{arg}' must be at least 3 characters long.")
 
-        for arg in ("has_toilet", "has_wifi", "has_sockets", "can_take_calls"):
-            if request.args.get(arg) not in ("True", "False", "true", "false", "1", "0"):
-                result = False
-                raise ValueError(
-                    f"The value for '{arg}' is not accepted. The accepted values are: 'True', 'False', 'true', 'false', '1', '0'."
-                )
+    for arg in necessary_args:
+        if arg not in request.args:
+            raise ValueError(f"The value for '{arg}' cannot be NULL.")
 
-        if request.args.get("coffee_price"):
-            try:
-                float(request.args.get("coffe_price"))
-            except TypeError as err:
-                result = False
-                raise TypeError("The value for 'coffe_price' must be float.") from err
+    for arg in ("name", "map_url", "img_url", "location"):
+        if len(request.args.get(arg)) < 3:
+            result = False
+            raise ValueError(f"The value for '{arg}' must be at least 3 characters long.")
+
+    for arg in ("has_toilet", "has_wifi", "has_sockets", "can_take_calls"):
+        if request.args.get(arg) not in ("True", "False", "true", "false", "1", "0"):
+            result = False
+            raise ValueError(
+                f"The value for '{arg}' is not accepted. The accepted values are: 'True', 'False', 'true', 'false', '1', '0'."
+            )
+
+    if request.args.get("coffee_price"):
+        try:
+            float(request.args.get("coffe_price"))
+        except TypeError as err:
+            result = False
+            raise TypeError("The value for 'coffe_price' must be float.") from err
 
     return result
 
@@ -200,7 +202,7 @@ def add_cafe():
         except exc.IntegrityError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err.orig)}}), 400)
 
-        except (KeyError, TypeError, ValueError) as err:
+        except (TypeError, ValueError) as err:
             return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
 
     return """
