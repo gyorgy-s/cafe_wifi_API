@@ -1,6 +1,13 @@
 # cafe_wifi_API
 An implementation to store data of cafes, the data is stored in a db, the information can be accessed through the API.
 
+in console in the folder the main.py is located:
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
 
 API endpoints return in JSON format:
 
