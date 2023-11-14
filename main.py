@@ -3,6 +3,7 @@ from flask import Flask, jsonify, render_template, request
 import flask_sqlalchemy
 import sqlalchemy
 from sqlalchemy import exc
+import sqlalchemy.orm.exc
 
 
 app = Flask(__name__)
@@ -223,6 +224,50 @@ def add_cafe():
             coffee_price:  not necessary, must be float<br>
             </p>
             """
+
+
+# HTTP PATCH - Update Coffe Price
+def get_cafe(id: int) -> Cafe:
+    with app.app_context():
+        result = db.get_or_404(Cafe, id)
+        return result
+
+
+def validate_patch_price(request: flask.Request):
+    result = True
+    if "new_price" not in request.args:
+        result = False
+        raise ValueError("The value for 'new_price' cannot be NULL.")
+    try:
+        float(request.args.get("new_price"))
+    except ValueError as err:
+        result = False
+        raise ValueError("The value for 'new_price' must be float.") from err
+    return result
+
+
+@app.route("/update-price/<cafe_id>", methods=["GET", "PATCH"])
+def update_coffe_price(cafe_id):
+    if request.method == "PATCH":
+        try:
+            if validate_patch_price(request=request):
+                with app.app_context():
+                    db.session.execute(
+                        sqlalchemy.update(Cafe),
+                        [
+                            {"id": cafe_id, "coffee_price": "\u00a3" + "%.2f" % (float(request.args.get("new_price")))}
+                        ],
+                    )
+                    db.session.commit()
+                return jsonify({"response": {"success": "succsessfully updated coffee price."}})
+            else:
+                return flask.make_response(jsonify({"response": {"failed": "failed validation, check required format."}}), 400)
+        except ValueError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
+        except sqlalchemy.orm.exc.StaleDataError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
+    else:
+        return flask.make_response(jsonify({"response": {"failed": "no PATCH method"}}), 400)
 
 
 if __name__ == "__main__":
