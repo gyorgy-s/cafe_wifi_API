@@ -100,7 +100,7 @@ def search_loc():
     if loc:
         with app.app_context():
             result = db.session.execute(
-                sqlalchemy.select(Cafe).where(Cafe.location == loc.capitalize()),
+                sqlalchemy.select(Cafe).where(Cafe.location.like(f"%{loc.capitalize()}%")),
                 execution_options={"prebuffer_rows": True},
             ).scalars()
         cafes = {"cafes": [row.to_dict() for row in result]}
@@ -132,7 +132,7 @@ def validate_new_entry(request: flask.Request) -> bool:
         "has_toilet",
         "has_wifi",
         "has_sockets",
-        "can_take_calls"
+        "can_take_calls",
     ]
     result = True
 
@@ -154,12 +154,13 @@ def validate_new_entry(request: flask.Request) -> bool:
 
     if request.args.get("coffee_price"):
         try:
-            float(request.args.get("coffe_price"))
-        except TypeError as err:
+            float(request.args.get("coffee_price"))
+        except ValueError as err:
             result = False
-            raise TypeError("The value for 'coffe_price' must be float.") from err
+            raise ValueError("The value for 'coffe_price' must be float.") from err
 
     return result
+
 
 def post_to_bool(value: str) -> bool:
     if value in ("True", "true", "1"):
@@ -174,8 +175,8 @@ def add_cafe():
         try:
             if validate_new_entry(request=request):
                 price = None
-                if "coffe_price" in request.args:
-                    price = "\u00a3" + request.args.get("coffee_price")
+                if "coffee_price" in request.args:
+                    price = "\u00a3" + "%.2f" % (float(request.args.get("new_price")))
 
                 new_caffe = Cafe(
                     # id = request.args.get("id"),
@@ -197,12 +198,12 @@ def add_cafe():
                     db.session.commit()
                 return jsonify({"response": {"success": "succsessfully added new cafe."}})
             else:
-                return "failed validation, check required format."
+                return flask.make_response(jsonify({"response": {"failed": "failed validation, check required format."}}), 400)
 
         except exc.IntegrityError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err.orig)}}), 400)
 
-        except (TypeError, ValueError) as err:
+        except ValueError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
 
     return """
