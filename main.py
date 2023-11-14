@@ -1,3 +1,5 @@
+import os
+
 import flask
 from flask import Flask, jsonify, render_template, request
 import flask_sqlalchemy
@@ -199,7 +201,9 @@ def add_cafe():
                     db.session.commit()
                 return jsonify({"response": {"success": "succsessfully added new cafe."}})
             else:
-                return flask.make_response(jsonify({"response": {"failed": "failed validation, check required format."}}), 400)
+                return flask.make_response(
+                    jsonify({"response": {"failed": "failed validation, check required format."}}), 400
+                )
 
         except exc.IntegrityError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err.orig)}}), 400)
@@ -226,11 +230,7 @@ def add_cafe():
             """
 
 
-# HTTP PATCH - Update Coffe Price
-def get_cafe(id: int) -> Cafe:
-    with app.app_context():
-        result = db.get_or_404(Cafe, id)
-        return result
+# HTTP PATCH - Update Coffee Price
 
 
 def validate_patch_price(request: flask.Request):
@@ -254,20 +254,72 @@ def update_coffe_price(cafe_id):
                 with app.app_context():
                     db.session.execute(
                         sqlalchemy.update(Cafe),
-                        [
-                            {"id": cafe_id, "coffee_price": "\u00a3" + "%.2f" % (float(request.args.get("new_price")))}
-                        ],
+                        [{"id": cafe_id, "coffee_price": "\u00a3" + "%.2f" % (float(request.args.get("new_price")))}],
                     )
                     db.session.commit()
                 return jsonify({"response": {"success": "succsessfully updated coffee price."}})
             else:
-                return flask.make_response(jsonify({"response": {"failed": "failed validation, check required format."}}), 400)
+                return flask.make_response(
+                    jsonify({"response": {"failed": "failed validation, check required format."}}), 400
+                )
         except ValueError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
         except sqlalchemy.orm.exc.StaleDataError as err:
             return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
     else:
-        return flask.make_response(jsonify({"response": {"failed": "no PATCH method"}}), 400)
+        return flask.make_response(jsonify({"response": {"failed": "not PATCH method"}}), 400)
+
+
+# HTTP DELETE - Delete Cafe
+def get_cafe(id: int) -> Cafe:
+    with app.app_context():
+        try:
+            result = db.get_or_404(Cafe, id)
+        except Exception as err:
+            raise LookupError("No such id in database.") from err
+        return result
+
+
+def delete_cafe(id: int):
+    with app.app_context():
+        cafe_to_delete = get_cafe(id)
+        db.session.delete(cafe_to_delete)
+        db.session.commit()
+
+
+def authorize(request: flask.Request):
+    result = False
+    if "api-key" not in request.args:
+        raise ValueError("You must have to submit your api-key for validation.")
+    with open(os.path.join("", "auth.key")) as f:
+        has_access = f.read().split()
+    if request.args.get("api-key") not in has_access:
+        raise PermissionError("You are not authorized for this operation.")
+    else:
+        result = True
+    return result
+
+
+@app.route("/report-closed/<int:cafe_id>", methods=["GET", "DELETE"])
+def remove_cafe(cafe_id):
+    if request.method == "DELETE":
+        try:
+            if authorize(request=request):
+                delete_cafe(cafe_id)
+                return jsonify({"response": {"success": "succsessfully deleted cafe."}})
+        except ValueError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
+        except PermissionError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 403)
+        except FileNotFoundError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 500)
+        except exc.IntegrityError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 400)
+        except LookupError as err:
+            return flask.make_response(jsonify({"response": {"failed": str(err)}}), 404)
+
+    else:
+        return flask.make_response(jsonify({"response": {"failed": "not DELETE method"}}), 400)
 
 
 if __name__ == "__main__":
