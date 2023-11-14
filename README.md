@@ -39,3 +39,10 @@ has_sockets:  necessary, accepted values: 'True', 'False', 'true', 'false', '1',
 can_take_calls:  necessary, accepted values: 'True', 'False', 'true', 'false', '1', '0'  
 coffee_price:  not necessary, must be float  
 
+Remove cafe from the db:
+```
+http://localhost:5000/report-closed/{CAFE ID}
+```
+in addition the request must contain an api-key that is crosschecked with the keys stored in a file separately.
+
+api-key: necessary, permission is checked
